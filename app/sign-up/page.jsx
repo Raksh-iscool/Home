@@ -1,5 +1,5 @@
 
-'use client'
+'use client';
 import { useState } from 'react';
 import { useCreateUserWithEmailAndPassword } from 'react-firebase-hooks/auth';
 import { auth, provider, db } from '@/app/firebase/config';
@@ -18,6 +18,12 @@ const SignUp = () => {
 
   const handleSignUp = async () => {
     try {
+      // Validate inputs
+      if (!email || !password || !username) {
+        setErrorMessage('All fields are required');
+        return;
+      }
+
       // Check if username already exists
       const usernameQuery = query(collection(db, 'users'), where('username', '==', username));
       const usernameSnapshot = await getDocs(usernameQuery);
@@ -31,6 +37,7 @@ const SignUp = () => {
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
 
+      // Create user with email and password
       const res = await createUserWithEmailAndPassword(email, password);
       
       if (!res || !res.user) {
@@ -56,8 +63,12 @@ const SignUp = () => {
     } catch (e) {
       if (e.code === 'auth/email-already-in-use') {
         setErrorMessage('User already exists with this email address');
+      } else if (e.code === 'auth/invalid-email') {
+        setErrorMessage('Invalid email address');
+      } else if (e.code === 'auth/weak-password') {
+        setErrorMessage('Password should be at least 6 characters');
       } else {
-        setErrorMessage(e.message);
+        setErrorMessage('An unexpected error occurred');
         console.error(e);
       }
     }
@@ -82,7 +93,7 @@ const SignUp = () => {
         await setDoc(userDoc, {
           uid: user.uid,
           email: user.email,
-          username: username,
+          username: user.displayName || '', // Google sign-in may provide a display name
           password: 'Google sign-in does not provide a password'
         });
       }
